@@ -1,0 +1,218 @@
+package practica1;
+import java_cup.runtime.*;
+import javax.swing.JOptionPane;
+import java.util.ArrayList;
+
+parser code {:
+    public Nodo raiz;
+    public ArrayList<Nodo> lista = new ArrayList<>();
+    public ArrayList<Nodo> listaRet = new ArrayList<>();
+    public void reiniciar(){
+        lista.clear();
+        listaRet.clear();
+    }
+    @Override
+    public void syntax_error(Symbol sy) {
+        Nodo t=(Nodo)sy.value;
+        done_parsing();
+        report_error("ERROR SINTACTICO: " + t.getLexema() + " [" +t.getFila()+ " , " +t.getColumna()+ "]" ,null);
+        JOptionPane.showMessageDialog(null, "ERROR SINTACTICO: " + t.getLexema() + " [" +t.getFila()+ " , " +t.getColumna()+ "]");
+    }
+    @Override
+    public void unrecovered_syntax_error( Symbol sy ) throws java.lang.Exception{
+        System.out.println("No se ha podido recuperar...");
+    }
+:}
+
+terminal Nodo PORC,PT,OR,POR,MAS,INTER,RANGO,CM,SALTO,SIMPLE,DOBLE,RETORNO,BLANCO,TODO,CONJ,DSPT,FLECHA,PTCM,
+CORA,CORC,RESERV,ERROR,CARRO,PARA,PARC,LETRA;
+terminal Nodo ID,CAD;
+non terminal Nodo inicio,lsent,sent,defconj,lista,defer,expresion,defret,defres,listret,ret,termino;
+
+start with inicio;
+
+inicio ::= PORC lsent:ls PORC {:
+                            parser.raiz = new Nodo("","Raiz",0,0);
+                            parser.raiz.addHijo(ls);
+                            RESULT = parser.raiz; 
+                            :};
+
+lsent ::= lsent:ls sent:s{:
+                    Nodo padre = new Nodo("lsent","lsent",0,0);
+                    padre.addHijo(ls);
+                    padre.addHijo(s);
+                    RESULT = padre;
+                    :}
+        | sent:s{:
+                RESULT = s;
+              :}
+               ;
+
+sent ::= CONJ:c DSPT ID:id FLECHA defconj:def PTCM{:
+                                            Nodo padre;
+                                            padre = c;
+                                            padre.addHijo(id);
+                                            padre.addHijo(def);
+                                            RESULT = padre;
+                                        :}
+       | ID:id FLECHA defer:def1 FLECHA defret:def2{:
+                                        Nodo padre= new Nodo("","ER",0,0);
+                                        padre.addHijo(id);
+                                        padre.addHijo(def1);
+                                        padre.addHijo(def2);
+                                        RESULT =  padre;
+                                      :}
+        ;
+
+defconj ::= RANGO:r {:
+                    Nodo padre = new Nodo("RANGO","RANGO",0,0);
+                    String array[] = r.getLexema().split("~");
+                    Nodo h1 = new Nodo("",array[0],0,0);
+                    Nodo h2 = new Nodo("",array[1],0,0);
+                    padre.addHijo(h1);
+                    padre.addHijo(h2);
+                    RESULT = padre;
+                   :}
+        | lista:ls{:
+                Nodo padre = new Nodo("LISTA","LISTA",0,0);
+                for(Nodo e: parser.lista){
+                    padre.addHijo(e);
+                }
+                //padre.hijos=parser.lista;
+                parser.reiniciar();
+                RESULT = padre;
+                //RESULT = ls;
+                :}
+        ;
+            
+lista ::= lista:ls CM LETRA:lt{:
+                        /*Nodo padre = new Nodo("LISTA","LISTA",0,0);
+                        padre.addHijo(ls);
+                        padre.addHijo(lt);
+                        RESULT = padre;*/
+                        parser.lista.add(lt);
+                        :}
+        | LETRA:l{:
+                  parser.lista.add(l);
+                //RESULT = l;
+                :}
+        ;
+
+defer ::= expresion:e{:
+                    //Nodo padre = new Nodo("EXPRESION","EXPRESION",0,0);
+                    //padre.addHijo(e);
+                    RESULT = e;
+                    :} 
+        ;
+
+expresion ::= POR:p expresion:e{:
+                            p.addHijo(e);
+                            RESULT = p;
+                            :}
+            | MAS:p expresion:e{:
+                                p.addHijo(e);
+                                RESULT = p;
+                                :}
+            | INTER:p expresion:e{:
+                                p.addHijo(e);
+                                RESULT = p;
+                                :}
+            | OR:p expresion:e1 expresion:e2{:
+                                            p.addHijo(e1);
+                                            p.addHijo(e2);
+                                            RESULT = p;
+                                            :}
+            | PT:p expresion:e1 expresion:e2{:
+                                            p.addHijo(e1);
+                                            p.addHijo(e2);
+                                            RESULT = p;
+                                            :}
+            | termino:t{:
+                        RESULT = t;
+                        :}
+            ;
+
+termino ::= ID:id{:
+                RESULT = id;
+                :}
+          | CAD:cad{:
+                    RESULT = cad;
+                    :}  
+          | SALTO:s {:
+                    RESULT = s;
+                    :}
+          | SIMPLE:sm{:
+                    RESULT = sm;
+                    :}
+          | DOBLE:db{:
+                    RESULT = db;
+                    :}
+          | CARRO:cr{:
+                    RESULT = cr;
+                    :}
+          | TODO:td{:
+                    RESULT = td;
+                    :}
+          | BLANCO:bl{:
+                    RESULT = bl;
+                    :}
+          ;
+
+defret ::= RETORNO:padre PARA CAD:a CM ID:b CM CAD:c CM ID:d CM ID:e PARC defres:f{:
+                            padre.addHijo(a);
+                            padre.addHijo(b);
+                            padre.addHijo(c);
+                            padre.addHijo(d);
+                            padre.addHijo(e);
+                            if(f!=null){
+                                padre.addHijo(f);
+                            }
+                            RESULT = padre;
+                            :}
+          | ERROR:p PARA ID:a CM ID:b CM ID:c PARC PTCM{:                                                  
+                                                        p.addHijo(a);
+                                                        p.addHijo(b);
+                                                        p.addHijo(c);
+                                                        RESULT = p;
+                                                        :}
+          ;
+
+defres ::= FLECHA RESERV:p CORA listret:h CORC PTCM{:
+                                        Nodo padre = new Nodo("LISTRES","LISTRES",0,0);
+                                        for(Nodo e: parser.listaRet){
+                                            padre.addHijo(e);
+                                        }
+                                        parser.reiniciar();
+                                        RESULT = padre;
+                                        //padre.addHijo(h);
+                                        //RESULT = p;
+                                        :}
+         | PTCM{:
+                RESULT = null;
+                :}
+         ;
+
+listret ::= listret:h1 ret:h2{:
+                        /*Nodo padre = new Nodo("LISTRET","LISTRET",0,0);
+                        padre.addHijo(h1);
+                        padre.addHijo(h2);
+                        RESULT = padre;*/
+                        parser.listaRet.add(h2);
+                        :}
+          | ret:r{:
+                 parser.listaRet.add(r);
+                //RESULT = r;
+                :}
+          ;
+
+ret ::= CAD:a FLECHA RETORNO:r PARA CAD:b CM ID:c CM CAD:d CM ID:e CM ID:f PARC PTCM{:
+                                    //falta quitar comillas alas cadenas
+                                    r.addHijo(a);
+                                    r.addHijo(b);
+                                    r.addHijo(c);
+                                    r.addHijo(d);
+                                    r.addHijo(e);
+                                    r.addHijo(f);
+                                    RESULT = r;
+                                    :} 
+                                    ;
